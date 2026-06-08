@@ -1203,28 +1203,11 @@ async function buildParameters(type: string, language: string, page: number, id:
   }*/
   parameters.include_adult = config.includeAdult;
 
-  if (config.ageRating) {
-    switch (config.ageRating) {
-      case "G":
-        parameters.certification_country = "US";
-        parameters.certification = type === "movie" ? "G" : "TV-G";
-        break;
-      case "PG":
-        parameters.certification_country = "US";
-        parameters.certification = type === "movie" ? ["G", "PG"].join("|") : ["TV-G", "TV-PG"].join("|");
-        break;
-      case "PG-13":
-        parameters.certification_country = "US";
-        parameters.certification = type === "movie" ? ["G", "PG", "PG-13"].join("|") : ["TV-G", "TV-PG", "TV-14"].join("|");
-        break;
-      case "R":
-        parameters.certification_country = "US";
-        parameters.certification = type === "movie" ? ["G", "PG", "PG-13", "R"].join("|") : ["TV-G", "TV-PG", "TV-14", "TV-MA"].join("|");
-        break;
-      case "NC-17":
-        break;
-    }
-  }
+  // Do not push the global age-rating filter into TMDB discover. TMDB's
+  // certification filter requires a single certification_country, and using
+  // US here excludes otherwise valid titles that only have non-US ratings.
+  // Age filtering is applied after metadata enrichment in applyCatalogFilters,
+  // where both canonical and local certifications are available.
 
   if (id.includes("streaming")) {
     const provider = findProvider(id.split(".")[1]);
