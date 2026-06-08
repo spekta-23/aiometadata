@@ -1,4 +1,5 @@
 import consola from 'consola';
+import { passesAgeRatingFilter } from './contentRating.js';
 const logger = consola.withTag('CatalogFilters');
 
 function isHideWatchedExcluded(cleanId: string): boolean {
@@ -9,53 +10,21 @@ function isHideWatchedExcluded(cleanId: string): boolean {
     || cleanId.includes('upnext');
 }
 
-const movieRatingHierarchy = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
-const tvRatingHierarchy = ['TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'];
-const movieToTvMap: Record<string, string> = {
-  'G': 'TV-G',
-  'PG': 'TV-PG',
-  'PG-13': 'TV-14',
-  'R': 'TV-MA',
-  'NC-17': 'TV-MA'
-};
 
 function applyAgeRatingFilter(metas: any[], type: string, config: any): any[] {
   if (!config.ageRating || config.ageRating.toLowerCase() === 'none') {
     return metas;
   }
 
-  const isTvRating = type === 'series';
-  const finalUserRating = isTvRating ? (movieToTvMap[config.ageRating] || config.ageRating) : config.ageRating;
-  const ratingHierarchy = isTvRating ? tvRatingHierarchy : movieRatingHierarchy;
-  const userRatingIndex = ratingHierarchy.indexOf(finalUserRating);
-
-  if (userRatingIndex === -1) return metas;
-
-  const isUserRatingRestrictive = finalUserRating === 'PG-13' ||
-    (movieRatingHierarchy.indexOf(finalUserRating) !== -1 &&
-      movieRatingHierarchy.indexOf(finalUserRating) <= movieRatingHierarchy.indexOf('PG-13')) ||
-    (tvRatingHierarchy.indexOf(finalUserRating) !== -1 &&
-      tvRatingHierarchy.indexOf(finalUserRating) <= tvRatingHierarchy.indexOf('TV-14'));
-
   const before = metas.length;
-  const filtered = metas.filter(meta => {
-    const cert = meta.app_extras?.certification || meta.certification || null;
-
-    if (!cert || cert === '' || cert.toLowerCase() === 'nr') {
-      return !isUserRatingRestrictive;
-    }
-
-    const resultRatingIndex = ratingHierarchy.indexOf(cert);
-    if (resultRatingIndex === -1) return true;
-
-    return resultRatingIndex <= userRatingIndex;
-  });
+  const filtered = metas.filter(meta => passesAgeRatingFilter(meta, type, config.ageRating));
 
   if (before !== filtered.length) {
     logger.info(`[AgeRating] Filtered out ${before - filtered.length} items (max: ${config.ageRating})`);
   }
   return filtered;
 }
+
 
 interface CatalogFilterOptions {
   type: string;
